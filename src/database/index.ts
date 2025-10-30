@@ -30,6 +30,7 @@ export class DatabaseManager {
     this.createVendorTables();
     this.createNotificationTables();
     this.createAuditLogTables();
+    this.createVerificationTokenTables();
   }
 
   private createUserTables() {
@@ -407,6 +408,25 @@ export class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+    `);
+  }
+
+  private createVerificationTokenTables() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS verification_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        type TEXT NOT NULL CHECK(type IN ('email_verification', 'password_reset')),
+        expires_at TEXT NOT NULL,
+        used BOOLEAN NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_verification_tokens_user_id ON verification_tokens(user_id);
+      CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON verification_tokens(token);
+      CREATE INDEX IF NOT EXISTS idx_verification_tokens_type ON verification_tokens(type);
     `);
   }
 

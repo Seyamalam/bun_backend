@@ -9,6 +9,7 @@ import {
   generateToken,
   hashPassword,
   verifyPassword,
+  generateVerificationToken,
 } from '../utils/auth';
 import {
   createErrorResponse,
@@ -107,7 +108,23 @@ export async function register(request: BunRequest): Promise<Response> {
     db.prepare('INSERT INTO carts (id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?)')
       .run(generateId(), userId, now, now);
 
-    // Generate token
+    // Generate email verification token (expires in 24 hours)
+    const verificationToken = generateVerificationToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    
+    db.prepare(
+      `INSERT INTO verification_tokens (id, user_id, token, type, expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(
+      generateId(),
+      userId,
+      verificationToken,
+      'email_verification',
+      expiresAt,
+      now
+    );
+
+    // Generate JWT token
     const token = generateToken({
       user_id: userId,
       email: body.email,
@@ -123,6 +140,8 @@ export async function register(request: BunRequest): Promise<Response> {
         role: 'customer',
       },
       token,
+      verification_token: verificationToken,
+      message: 'Registration successful. Please verify your email.',
     };
 
     return createSuccessResponse(response, 201);
@@ -239,15 +258,35 @@ export async function verifyEmail(request: BunRequest): Promise<Response> {
       throw new ValidationError('Verification token is required');
     }
 
-    // TODO: Implement email verification with separate token
-    // For now, we'll just mark email as verified
-    const user = await requireAuth(request);
     const db = getDatabase();
     const now = new Date().toISOString();
 
+    // Find the verification token
+    const tokenRecord = db
+      .prepare(
+        `SELECT * FROM verification_tokens 
+         WHERE token = ? AND type = 'email_verification' AND used = 0`
+      )
+      .get(body.token) as any;
+
+    if (!tokenRecord) {
+      throw new AuthenticationError('Invalid or expired verification token');
+    }
+
+    // Check if token has expired
+    if (new Date(tokenRecord.expires_at) < new Date()) {
+      throw new AuthenticationError('Verification token has expired');
+    }
+
+    // Mark token as used
+    db.prepare('UPDATE verification_tokens SET used = 1 WHERE id = ?').run(
+      tokenRecord.id
+    );
+
+    // Mark email as verified
     db.prepare('UPDATE users SET email_verified = 1, updated_at = ? WHERE id = ?').run(
       now,
-      user.id
+      tokenRecord.user_id
     );
 
     return createSuccessResponse({ message: 'Email verified successfully' });
@@ -274,22 +313,48 @@ export async function forgotPassword(request: BunRequest): Promise<Response> {
     }
 
     const db = getDatabase();
+    const now = new Date().toISOString();
 
     // Check if user exists
     const user = db
       .prepare('SELECT id FROM users WHERE email = ?')
-      .get(body.email);
+      .get(body.email) as any;
 
     if (!user) {
-      // Return generic response for security
+      // Return generic response for security (don't reveal if email exists)
       return createSuccessResponse({
         message: 'If the email exists, a password reset link will be sent',
       });
     }
 
-    // TODO: Send reset email with token
+    // Invalidate any existing password reset tokens for this user
+    db.prepare(
+      `UPDATE verification_tokens 
+       SET used = 1 
+       WHERE user_id = ? AND type = 'password_reset' AND used = 0`
+    ).run(user.id);
+
+    // Generate password reset token (expires in 1 hour)
+    const resetToken = generateVerificationToken();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    db.prepare(
+      `INSERT INTO verification_tokens (id, user_id, token, type, expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(
+      generateId(),
+      user.id,
+      resetToken,
+      'password_reset',
+      expiresAt,
+      now
+    );
+
+    // In a real application, send email with reset link containing the token
+    // For now, return the token in the response (remove this in production)
     return createSuccessResponse({
       message: 'If the email exists, a password reset link will be sent',
+      reset_token: resetToken, // For testing only - remove in production
     });
   });
 }
@@ -323,9 +388,40 @@ export async function resetPassword(request: BunRequest): Promise<Response> {
       );
     }
 
-    // TODO: Verify reset token before updating password
-    // For now, return error
-    throw new AuthenticationError('Password reset token is invalid or expired');
+    const db = getDatabase();
+    const now = new Date().toISOString();
+
+    // Find the reset token
+    const tokenRecord = db
+      .prepare(
+        `SELECT * FROM verification_tokens 
+         WHERE token = ? AND type = 'password_reset' AND used = 0`
+      )
+      .get(body.token) as any;
+
+    if (!tokenRecord) {
+      throw new AuthenticationError('Invalid or expired password reset token');
+    }
+
+    // Check if token has expired
+    if (new Date(tokenRecord.expires_at) < new Date()) {
+      throw new AuthenticationError('Password reset token has expired');
+    }
+
+    // Hash new password
+    const passwordHash = await hashPassword(body.password);
+
+    // Update user's password
+    db.prepare(
+      'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?'
+    ).run(passwordHash, now, tokenRecord.user_id);
+
+    // Mark token as used
+    db.prepare('UPDATE verification_tokens SET used = 1 WHERE id = ?').run(
+      tokenRecord.id
+    );
+
+    return createSuccessResponse({ message: 'Password reset successfully' });
   });
 }
 

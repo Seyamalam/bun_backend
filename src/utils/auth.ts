@@ -160,3 +160,14 @@ export function generateHMAC(data: string, secret: string): string {
   hasher.update(data);
   return hasher.digest('hex');
 }
+
+/**
+ * Generate secure verification token (64 characters)
+ */
+export function generateVerificationToken(): string {
+  const randomBytes = new Uint8Array(32);
+  crypto.getRandomValues(randomBytes);
+  return Array.from(randomBytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
