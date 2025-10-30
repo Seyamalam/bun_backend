@@ -26,11 +26,12 @@ describe('Health Check Endpoints', () => {
 
 describe('Authentication Endpoints', () => {
   it('should register new user', async () => {
+    const uniqueEmail = `testuser${Date.now()}@example.com`;
     const response = await fetch('http://localhost:3000/api/v1/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'newuser@example.com',
+        email: uniqueEmail,
         password: 'Password123',
         password_confirm: 'Password123',
         first_name: 'John',
@@ -41,7 +42,7 @@ describe('Authentication Endpoints', () => {
     expect(response.status).toBe(201);
     const data = (await response.json()) as any;
     expect(data.success).toBe(true);
-    expect(data.data.user.email).toBe('newuser@example.com');
+    expect(data.data.user.email).toBe(uniqueEmail);
     expect(data.data.token).toBeDefined();
   });
 
@@ -84,7 +85,7 @@ describe('Product Endpoints', () => {
     expect(response.status).toBe(200);
     const data = (await response.json()) as any;
     expect(data.success).toBe(true);
-    expect(Array.isArray(data.data)).toBe(true);
+    expect(Array.isArray(data.data.data)).toBe(true);
   });
 
   it('should list categories', async () => {

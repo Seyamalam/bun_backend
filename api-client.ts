@@ -107,7 +107,7 @@ async function request(
  */
 async function testHealth() {
   log('\n=== Testing Health Endpoint ===', 'bright');
-  await request('GET', '/health');
+  await request('GET', `${BASE_URL}/health`);
 }
 
 /**
@@ -115,7 +115,7 @@ async function testHealth() {
  */
 async function testStatus() {
   log('\n=== Testing Status Endpoint ===', 'bright');
-  await request('GET', '/api/v1/status');
+  await request('GET', '/status');
 }
 
 /**
