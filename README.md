@@ -489,16 +489,30 @@ bun run build:windows
 ```
 
 ### Docker Deployment
-```dockerfile
-FROM oven/bun:1 AS builder
-WORKDIR /app
-COPY . .
-RUN bun install --frozen-lockfile
-RUN bun run build
 
-FROM scratch
-COPY --from=builder /app/ecommerce-backend /app
-ENTRYPOINT ["/app"]
+See [BENCHMARK_README.md](./BENCHMARK_README.md) for comprehensive Docker and benchmarking documentation.
+
+**Quick Start:**
+```bash
+# Start with Docker Compose
+docker-compose up -d
+
+# Run performance benchmarks
+bun benchmark.ts
+
+# Or use the quick benchmark script
+./quick-benchmark.sh
+```
+
+**Dockerfile:**
+```dockerfile
+FROM oven/bun:1-alpine
+WORKDIR /app
+COPY package.json bun.lock* ./
+RUN bun install --frozen-lockfile --production
+COPY . .
+EXPOSE 3000
+CMD ["bun", "index.ts"]
 ```
 
 ## 🔐 Environment Variables
@@ -527,6 +541,34 @@ ENABLE_RATE_LIMIT=true
 - **Cart operations**: <100ms
 - **Authentication**: <50ms
 - **Rate limiting**: Custom per-endpoint/IP
+
+### Benchmarking Tools
+
+Three comprehensive benchmarking tools are provided:
+
+1. **TypeScript Benchmark** (`benchmark.ts`) - Recommended
+   - Comprehensive multi-endpoint testing
+   - Detailed metrics (RPS, response times, percentiles)
+   - JSON export of results
+   ```bash
+   bun benchmark.ts --duration 60 --concurrency 100
+   ```
+
+2. **Shell Benchmark** (`benchmark.sh`)
+   - Uses standard tools (hey, ab, wrk)
+   - Simple and portable
+   ```bash
+   ./benchmark.sh http://localhost:3000 30 50
+   ```
+
+3. **Stress Test** (`stress-test.ts`)
+   - Gradually increases load to find limits
+   - Identifies optimal concurrency settings
+   ```bash
+   bun stress-test.ts
+   ```
+
+See [BENCHMARK_README.md](./BENCHMARK_README.md) for detailed benchmarking guide.
 
 ## 🛡️ Security Features
 
