@@ -3,8 +3,26 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "version": "1.0.0",
+  "description": "Production-grade E-Commerce Backend API built with Bun and SQLite",
+  "author": "E-Commerce Team",
+  "license": "MIT",
+  "scripts": {
+    "start": "bun index.ts",
+    "dev": "bun --watch index.ts",
+    "build": "bun build --compile --minify --sourcemap --bytecode ./index.ts --outfile ecommerce-backend",
+    "build:linux": "bun build --compile --minify --sourcemap --bytecode --target=bun-linux-x64 ./index.ts --outfile ecommerce-backend-linux",
+    "build:macos": "bun build --compile --minify --sourcemap --bytecode --target=bun-darwin-arm64 ./index.ts --outfile ecommerce-backend-macos",
+    "build:windows": "bun build --compile --minify --sourcemap --bytecode --target=bun-windows-x64 ./index.ts --outfile ecommerce-backend-windows.exe",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
+    "lint": "echo 'Linting enabled via TypeScript strict mode'",
+    "clean": "rm -f ecommerce.db ecommerce-backend*"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^5"
   },
   "peerDependencies": {
     "typescript": "^5"
