@@ -18,7 +18,16 @@
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
     "lint": "echo 'Linting enabled via TypeScript strict mode'",
-    "clean": "rm -f ecommerce.db ecommerce-backend*"
+    "clean": "rm -f ecommerce.db ecommerce-backend*",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f ecommerce-api",
+    "docker:build": "docker-compose up --build -d",
+    "benchmark": "bun benchmark.ts",
+    "benchmark:quick": "bun benchmark.ts --duration 30 --concurrency 50",
+    "benchmark:stress": "bun stress-test.ts",
+    "benchmark:load": "bun load-test-scenarios.ts",
+    "benchmark:interactive": "./run-benchmark.sh"
   },
   "devDependencies": {
     "@types/bun": "latest",
